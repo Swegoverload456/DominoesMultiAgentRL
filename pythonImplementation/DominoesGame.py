@@ -3,6 +3,7 @@ from typing import List, Dict
 from Player import Player
 from Tile import Tile
 
+# DominoesGame class
 class DominoesGame:
     def __init__(self, num_players=4):
         self.num_players = num_players
@@ -93,9 +94,53 @@ class DominoesGame:
         self.deal_tiles()
 
     def get_state(self, player_index):
-        return {
-            "board": self.board,
-            "player_hand": self.players[player_index].hand,
-            "valid_tiles": self.players[player_index].get_playable_tiles(self.left_end, self.right_end),
-            "current_player": player_index,
-        }
+        # Example: Flatten the board and player hand into a numpy array
+        board_tiles = [tile.getA() for tile in self.board] + [tile.getB() for tile in self.board]
+        player_hand = [tile.getA() for tile in self.players[player_index].hand] + [tile.getB() for tile in self.players[player_index].hand]
+        valid_tiles = [tile.getA() for tile in self.players[player_index].get_playable_tiles(self.left_end, self.right_end)] + [tile.getB() for tile in self.players[player_index].get_playable_tiles(self.left_end, self.right_end)]
+        state = board_tiles + player_hand + valid_tiles + [self.left_end, self.right_end, player_index]
+        
+        # Ensure the state has a consistent shape
+        if len(state) < 31:
+            # Pad with zeros if necessary
+            state += [-1] * (31 - len(state))
+        elif len(state) > 31:
+            # Truncate if necessary
+            state = state[:31]
+        
+        return np.array(state, dtype=np.float32)
+
+
+# Reinforcement Learning Environment
+class DominoesEnv(gym.Env):
+    def __init__(self):
+        super(DominoesEnv, self).__init__()
+        self.game = DominoesGame()
+        self.action_space = spaces.Discrete(28)  # Example: 28 possible actions
+        self.observation_space = spaces.Box(low=-1, high=1, shape=(31,), dtype=np.float32)  # Updated to match observation shape
+
+    def reset(self, seed=None, options=None):
+        # Reset the game
+        self.game.reset()
+        # Get the initial state
+        state = self.game.get_state(0)
+        info = {}  # Additional info (optional)
+        return state, info
+
+    def step(self, action):
+        # Play the action
+        self.game.play_turn(0, action)
+        # Get the next state
+        next_state = self.game.get_state(0)
+        # Define reward and termination condition
+        reward = 1 if self.game.game_over else 0
+        terminated = self.game.game_over
+        truncated = False  # Truncation is not used in this example
+        info = {}  # Additional info (optional)
+        return next_state, reward, terminated, truncated, info
+
+
+# Train the model
+env = make_vec_env(lambda: DominoesEnv(), n_envs=1)
+model = PPO("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=10000)

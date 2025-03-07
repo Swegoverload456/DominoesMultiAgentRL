@@ -1,3 +1,4 @@
+# Tile class
 class Tile:
     def __init__(self, a, b):
         self.side1 = a

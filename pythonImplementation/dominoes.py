@@ -140,14 +140,16 @@ class DominoesGame:
         player = self.players[player_index]
         playable_tiles = player.get_playable_tiles(self.left_end, self.right_end)
 
-        if not playable_tiles:
+        if not playable_tiles or action < 0 or action >= len(playable_tiles):
+            # No playable tiles or invalid action: pass
             self.consecutive_passes += 1
             if self.consecutive_passes == self.num_players:
                 self.game_over = True
             return
 
-        tile_to_play = playable_tiles[action["tile_index"]]
-        side = action.get("side", 0)
+        # Use the integer action as the index of the tile to play
+        tile_to_play = playable_tiles[action]
+        side = 0  # Default side (you can modify this logic if needed)
         self.add_to_board(tile_to_play, side)
         player.remove(tile_to_play.getA(), tile_to_play.getB())
         self.consecutive_passes = 0
@@ -168,44 +170,116 @@ class DominoesGame:
         self.deal_tiles()
 
     def get_state(self, player_index):
-        # Example: Flatten the board and player hand into a numpy array
+        # Board state
         board_tiles = [tile.getA() for tile in self.board] + [tile.getB() for tile in self.board]
+        board_tiles += [-1] * (56 - len(board_tiles))  # Pad with -1
+
+        # Player's hand
         player_hand = [tile.getA() for tile in self.players[player_index].hand] + [tile.getB() for tile in self.players[player_index].hand]
+        player_hand += [-1] * (14 - len(player_hand))  # Pad with -1
+
+        # Valid tiles
         valid_tiles = [tile.getA() for tile in self.players[player_index].get_playable_tiles(self.left_end, self.right_end)] + [tile.getB() for tile in self.players[player_index].get_playable_tiles(self.left_end, self.right_end)]
-        state = board_tiles + player_hand + valid_tiles + [self.left_end, self.right_end, player_index]
-        return np.array(state, dtype=np.float32)
+        valid_tiles += [-1] * (14 - len(valid_tiles))  # Pad with -1
+
+        return {
+            "board": np.array(board_tiles, dtype=np.float32),
+            "hand": np.array(player_hand, dtype=np.float32),
+            "valid_tiles": np.array(valid_tiles, dtype=np.float32),
+        }
 
 
-# Reinforcement Learning Environment
 class DominoesEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, num_players=4):
         super(DominoesEnv, self).__init__()
-        self.game = DominoesGame()
-        self.action_space = spaces.Discrete(28)  # Example: 28 possible actions
-        self.observation_space = spaces.Box(low=0, high=1, shape=(10,), dtype=np.float32)  # Example
+        self.num_players = num_players
+        self.game = DominoesGame(num_players=num_players)
+        self.action_space = spaces.Discrete(7)  # Example: 7 possible actions
+        self.observation_space = spaces.Dict({
+            "board": spaces.Box(low=-1, high=6, shape=(56,), dtype=np.float32),
+            "hand": spaces.Box(low=-1, high=6, shape=(14,), dtype=np.float32),
+            "valid_tiles": spaces.Box(low=-1, high=6, shape=(14,), dtype=np.float32),
+        })
+        self.current_player = 0  # Track the current player
 
     def reset(self, seed=None, options=None):
-        # Reset the game
         self.game.reset()
-        # Get the initial state
-        state = self.game.get_state(0)
-        info = {}  # Additional info (optional)
+        self.current_player = 0
+        state = self.game.get_state(self.current_player)
+        info = {}
         return state, info
 
     def step(self, action):
-        # Play the action
-        self.game.play_turn(0, action)
-        # Get the next state
-        next_state = self.game.get_state(0)
-        # Define reward and termination condition
-        reward = 1 if self.game.game_over else 0
-        terminated = self.game.game_over
-        truncated = False  # Truncation is not used in this example
-        info = {}  # Additional info (optional)
+        # Play the action for the current player
+        self.game.play_turn(self.current_player, action)
+
+        # Check if the game is over
+        if self.game.game_over:
+            rewards = self.calculate_rewards()
+            reward = rewards[self.current_player]  # Get the reward for the current player
+            terminated = True
+        else:
+            reward = 0
+            terminated = False
+
+        # Move to the next player
+        self.current_player = (self.current_player + 1) % self.num_players
+
+        # Get the next state for the new current player
+        next_state = self.game.get_state(self.current_player)
+        truncated = False
+        info = {}
+
         return next_state, reward, terminated, truncated, info
 
+    def calculate_rewards(self):
+        rewards = {}
+        winner = None
+        for i, player in enumerate(self.game.players):
+            if not player.hand:
+                winner = i
+                break
 
-# Train the model
+        for i in range(self.num_players):
+            if i == winner:
+                rewards[i] = 100  # Winner gets 100
+            else:
+                rewards[i] = 100 - self.game.players[i].sum_hand()  # Others get 100 - sum of their hand
+
+        return rewards
+
+'''from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.env_util import make_vec_env
+import os
+
+# Create the environment
 env = make_vec_env(lambda: DominoesEnv(), n_envs=1)
-model = PPO("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=10000)
+
+from stable_baselines3.common.policies import MultiInputActorCriticPolicy
+
+# Create the model with MultiInputActorCriticPolicy
+model = PPO(MultiInputActorCriticPolicy, env, verbose=1)
+
+# Save a checkpoint every 10,000 timesteps
+checkpoint_callback = CheckpointCallback(save_freq=10000, save_path="./checkpoints/", name_prefix="dominoes_model")
+
+# Train the model with checkpointing
+model.learn(total_timesteps=50000, callback=checkpoint_callback)
+
+# Find the latest checkpoint
+checkpoint_dir = "./checkpoints/"
+checkpoints = [f for f in os.listdir(checkpoint_dir) if f.startswith("dominoes_model")]
+latest_checkpoint = max(checkpoints, key=lambda x: int(x.split("_")[2]))
+
+# Load the latest checkpoint
+model = PPO.load(os.path.join(checkpoint_dir, latest_checkpoint))
+
+# Set the environment for the loaded model
+model.set_env(env)
+
+# Continue training
+model.learn(total_timesteps=50000, reset_num_timesteps=False)
+
+# Save the final model
+model.save("./Dominoes/dominoes_model_final")'''

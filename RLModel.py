@@ -38,7 +38,27 @@ class MyMultiAgentEnv(MultiAgentEnv):
 
     def __init__(self, config=None):
         super().__init__()
-        ...
+         # Define the agents in the game.
+        self.agents = self.possible_agents = ["player0", "player1", "player2", "player3"]
+
+        # Each agent observes a 9D tensor, representing the 3x3 fields of the board.
+        # A 0 means an empty field, a 1 represents a piece of player 1, a -1 a piece of
+        # player 2.
+        self.observation_spaces = {
+            "player0": gym.spaces.Box()
+            "player1": gym.spaces.Box(-1.0, 1.0, (9,), np.float32),
+            "player2": gym.spaces.Box(-1.0, 1.0, (9,), np.float32),
+        }
+        # Each player has 9 actions, encoding the 9 fields each player can place a piece
+        # on during their turn.
+        self.action_spaces = {
+            "player1": gym.spaces.Discrete(9),
+            "player2": gym.spaces.Discrete(9),
+        }
+
+        self.board = None
+        self.current_player = None
+
 
     def reset(self, *, seed=None, options=None):
         ...
