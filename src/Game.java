@@ -1,4 +1,4 @@
-package Dominoes.src;
+package src;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +37,7 @@ public class Game {
 
     public static void main(String[] args) {
 
-        boolean training = true;
+        boolean training = false;
 
         for(int i = 0; i < 7; i++){
             for(int j = 0; j <= i; j++){
@@ -112,6 +112,10 @@ public class Game {
 
                     if(!training){
                         System.out.println("Enter the index of the tile you want to play. Player " + BLUE +  i + RESET + " can only play: " +  PURPLE + temp.toString() + RESET);
+                        if(board.size() > 0){
+                            Tile bestTile = BacktrackingAlgorithm.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
+                            System.out.println("Your best theoretical move here is: " + bestTile.toString());
+                        }
                     }
                     else{
                         System.out.println("Player action: ");
@@ -273,6 +277,10 @@ class Player{
         return hand.toString();
     }
 
+    public ArrayList<Tile> getHand(){
+        return hand;
+    }
+
     public int size(){
         return hand.size();
     }
@@ -310,4 +318,7 @@ class Player{
     public void sort(){
         Collections.sort(hand);
     }
+
+    
+
 }

@@ -1,4 +1,4 @@
-package Dominoes.src;
+package src;
 
 public class Tile implements Comparable<Tile>{
     private int side1 = -1;
