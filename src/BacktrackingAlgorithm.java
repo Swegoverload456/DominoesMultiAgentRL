@@ -37,7 +37,7 @@ public class BacktrackingAlgorithm {
                 MoveResult result = future.get(5, TimeUnit.SECONDS);
                 boolean playOnLeft = futures.indexOf(future) % 2 == 0;
                 String side = playOnLeft ? "Left" : "Right";
-                //System.out.println("Tile: " + result.getTile() + " WinRate: " + result.getWinRate() + " (" + side + ")");
+                System.out.println("Tile: " + result.getTile() + " WinRate: " + result.getWinRate() + " (" + side + ")");
 
                 if (result.getWinRate() > bestWinRate) {
                     bestWinRate = result.getWinRate();
