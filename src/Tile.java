@@ -3,10 +3,19 @@ package src;
 public class Tile implements Comparable<Tile>{
     private int side1 = -1;
     private int side2 = -1;
+    private int left = 1;
 
     public Tile(int a, int b){
         side1 = a;
         side2 = b;
+    }
+
+    public void setSide(int s){
+        left = s;
+    }
+
+    public int getSide(){
+        return left;
     }
 
     public int getA(){
