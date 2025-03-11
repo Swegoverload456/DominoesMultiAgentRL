@@ -56,22 +56,6 @@ public class Game {
             training = false;
         }
 
-        int c = 0;
-
-        for(int i = 0; i < 4; i++){
-
-            players[i] = new Player();
-
-            for(int j = 0; j < 7; j++){
-                players[i].add(set.get(c));
-                c++;
-            }
-            players[i].sort();
-            if(!training){
-                System.out.println("Player " + (i+1) + ": " + players[i].toString());
-            }
-        }
-
         Random r = new Random();
 
         leftEnd = -1;
@@ -80,11 +64,36 @@ public class Game {
         int consecutivePasses = 0;
 
         boolean flag = true;
-        int iterations = 1000;
+        int iterations = 100;
         int[] wins = new int[4];
 
         for(int k = 0; k < iterations; k++){ 
+            for(int i = 0; i < 7; i++){
+                for(int j = 0; j <= i; j++){
+                    set.add(new Tile(j, i));
+                }
+            }
+    
+            Collections.shuffle(set);
+
+            int c = 0;
+
+            for(int i = 0; i < 4; i++){
+
+                players[i] = new Player();
+
+                for(int j = 0; j < 7; j++){
+                    players[i].add(set.get(c));
+                    c++;
+                }
+                players[i].sort();
+                if(!training && !numCrunching){
+                    System.out.println("Player " + (i+1) + ": " + players[i].toString());
+                }
+            }
+
             int turn = r.nextInt(4);
+            //System.out.println("Starting: " + turn);
             int offset = turn;
             flag = true;
             while(flag){
@@ -108,35 +117,23 @@ public class Game {
                         System.out.println("{\"board\": " + board.toString() + ", \"player_hand\": " + players[i].toString() + ", \"valid_tiles\": " + temp.toString() + ", \"current_player\": " + i + "}");
                     }
 
-                    
-
-                    if(temp.size() == 0){
-                        if(!training && !numCrunching){
+                    if (temp.size() == 0) {
+                        if (!training && !numCrunching) {
                             System.out.println("Player " + i + " passes.");
                         }
                         consecutivePasses++;
-                    }
-                    else{
+                    } else {
                         Tile bestTile = null;
-                        if(!training){
-                            if(!numCrunching){
-                                System.out.println("Enter the index of the tile you want to play. Player " + BLUE +  i + RESET + " can only play: " +  PURPLE + temp.toString() + RESET);
+                        if (!training) {
+                            if (!numCrunching) {
+                                System.out.println("Enter the index of the tile you want to play. Player " + BLUE + i + RESET + " can only play: " + PURPLE + temp.toString() + RESET);
                             }
-                            if(board.size() > 0){
-                                bestTile = BacktrackingAlgorithm.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
-                                
-                                if(!numCrunching){
-                                    System.out.println("Your best theoretical move here is: " + bestTile.toString());
-                                }
+                            // Remove the board.size() > 0 condition to allow bestMove on empty board
+                            bestTile = BacktrackingAlgorithm.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
+                            if (!numCrunching) {
+                                System.out.println("Your best theoretical move here is: " + bestTile.toString());
                             }
-                            else{
-                                if(numCrunching){
-                                    bestTile = temp.get(r.nextInt(temp.size()));
-                                    //System.out.println("Best tiel: "  + bestTile.toString());
-                                }
-                            }
-                        }
-                        else{
+                        } else {
                             System.out.println("Player action: ");
                         }
                         
@@ -193,34 +190,84 @@ public class Game {
                         consecutivePasses = 0;
 
                         if(players[i].size() == 0){
-                            System.out.println("Player " + i + " won!!!!");
+                            if(!numCrunching){
+                                System.out.println("Player " + i + " won!!!!");
+                            }
                             flag = false;
-                            wins[offset]++;
-                            System.out.println("\n\nEND GAME DATA: ");
+
+                            int winner = i;
+
+                            int pos = 0;
+
                             for(int j = 0; j < 4; j++){
-                                System.out.println(players[i].sum());
+                                if(offset == winner){
+                                    j = 4;
+                                }
+                                else{
+                                    offset++;
+                                    pos++;
+                                    if(offset > 3){
+                                        offset = 0;
+                                    }
+                                }
+                            }
+                            
+                            wins[pos]++;
+                            if(!numCrunching){
+                                System.out.println("\n\nEND GAME DATA: ");
+                                for(int j = 0; j < 4; j++){
+                                    System.out.println(players[j].sum());
+                                }
                             }
                             break;
                         }
                     }
 
                     if(consecutivePasses == 4){
-                        System.out.println("The game ends in a stalemate, nobody wins!!!");
-                        flag = false;
-                        System.out.println("\n\nEND GAME DATA: ");
-                        for(int j = 0; j < 4; j++){
-                            System.out.println(players[i].sum());
+                        if(!numCrunching){
+                            System.out.println("The game ends in a stalemate, nobody wins!!!");
+                            
+                            System.out.println("\n\nEND GAME DATA: ");
                         }
+                        flag = false;
+                        int winnerRelative = offset;
+                        for(int j = 0; j < 4; j++){
+                            if(!numCrunching){
+                                System.out.println(players[j].sum());
+                            }
+                            if(players[j].sum() < players[winnerRelative].sum()){
+                                winnerRelative = j;
+                            }
+                        }
+                        int winner = winnerRelative;
+                        int pos = 0;
+
+                        for(int j = 0; j < 4; j++){
+                            if(offset == winner){
+                                j = 4;
+                            }
+                            else{
+                                offset++;
+                                pos++;
+                                if(offset > 3){
+                                    offset = 0;
+                                }
+                            }
+                        }
+                        wins[pos]++;
                         break;
                     }
                 }
                 turn = 0;
             }
+            if(numCrunching){
+                System.out.println((((double)(k*100))/((double)iterations)) + "% done.");
+            }
         }
         System.out.println("DONE");
         double[] wr = new double[4];
         for(int i = 0; i < 4; i++){
-            wr[i] = wins[i]/iterations;
+            wr[i] = ((double)wins[i])/((double)iterations);
         }
         System.out.println(Arrays.toString(wr));
         sc.close();
