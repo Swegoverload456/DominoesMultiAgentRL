@@ -100,8 +100,8 @@ public class Solver {
                 }
 
                 if(leftEnd == rightEnd ||
-                   player.getHand().get(play).getA() == leftEnd && player.getHand().get(play).getB() == rightEnd && leftEnd != rightEnd || 
-                   player.getHand().get(play).getA() == rightEnd && player.getHand().get(play).getB() == leftEnd && leftEnd != rightEnd){
+                   playableTiles.get(play).getA() == leftEnd && playableTiles.get(play).getB() == rightEnd && leftEnd != rightEnd || 
+                   playableTiles.get(play).getA() == rightEnd && playableTiles.get(play).getB() == leftEnd && leftEnd != rightEnd){
                     
                     int side = 0;
                     System.out.println("Enter 'l' if you want to place your tile on the left\nEnter 'r' if you want to place your tile on the right: ");
@@ -114,11 +114,11 @@ public class Solver {
                         side = 2;
                     }
   
-                    addToBoard(player.getHand().get(play), side);
+                    addToBoard(playableTiles.get(play), side);
 
                 }
                 else{
-                    addToBoard(player.getHand().get(play), 0);
+                    addToBoard(playableTiles.get(play), 0);
                 }
 
                 player.remove(playableTiles.get(play).getA(), playableTiles.get(play).getB());

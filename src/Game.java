@@ -40,9 +40,18 @@ public class Game {
 
     public static void main(String[] args) {
 
+        boolean useCFR = true; // Toggle to switch between CFR and Monte Carlo
+        CFRAlgorithm cfr = null;
+        if (useCFR) {
+            cfr = new CFRAlgorithm();
+            System.out.println("Training CFR...");
+            cfr.train();
+            System.out.println("CFR training complete.");
+        }
+
         boolean training = false;
 
-        boolean numCrunching = true;
+        boolean numCrunching = false;
 
         for(int i = 0; i < 7; i++){
             for(int j = 0; j <= i; j++){
@@ -129,7 +138,11 @@ public class Game {
                                 System.out.println("Enter the index of the tile you want to play. Player " + BLUE + i + RESET + " can only play: " + PURPLE + temp.toString() + RESET);
                             }
                             // Remove the board.size() > 0 condition to allow bestMove on empty board
-                            bestTile = BacktrackingAlgorithm.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
+                            if (useCFR && cfr != null) {
+                                bestTile = cfr.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
+                            } else {
+                                bestTile = BacktrackingAlgorithm.bestMove(board, players[i].getHand(), leftEnd, rightEnd);
+                            }
                             if (!numCrunching) {
                                 System.out.println("Your best theoretical move here is: " + bestTile.toString());
                             }
