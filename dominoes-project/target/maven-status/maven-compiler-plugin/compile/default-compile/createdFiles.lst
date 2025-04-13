@@ -1,5 +1,7 @@
 src\Game.class
 src\Tile.class
-src\Train.class
+src\Application.class
 src\Solver.class
+src\Solver$GameState.class
 src\Player.class
+src\Train.class

@@ -7,6 +7,8 @@ import java.io.IOException;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -26,6 +28,8 @@ public class Solver {
             System.out.println("Q-network model loaded successfully.");
         } catch (IOException e) {
             System.err.println("Failed to load Q-network model: " + e.getMessage());
+            String currentDirectory = System.getProperty("user.dir");
+            System.out.println("Current working directory: " + currentDirectory);
             qNetwork = null;
         }
     }
@@ -33,13 +37,15 @@ public class Solver {
     // DTO for game state
     public static class GameState {
         @JsonProperty("board")
-        private ArrayList<Tile> board;
+        private ArrayList<Tile> board = new ArrayList<>(); // Now uses src.Tile
         @JsonProperty("hand")
-        private ArrayList<Tile> hand;
+        private ArrayList<Tile> hand = new ArrayList<>();  // Now uses src.Tile
         @JsonProperty("leftEnd")
         private int leftEnd;
         @JsonProperty("rightEnd")
         private int rightEnd;
+
+        public GameState() {} // No-arg constructor
 
         public ArrayList<Tile> getBoard() { return board; }
         public void setBoard(ArrayList<Tile> board) { this.board = board; }
@@ -51,44 +57,28 @@ public class Solver {
         public void setRightEnd(int rightEnd) { this.rightEnd = rightEnd; }
     }
 
-    // DTO for Tile (ensure JSON serialization)
-    public static class Tile {
-        @JsonProperty("side1")
-        private int side1;
-        @JsonProperty("side2")
-        private int side2;
-
-        public Tile() {}
-
-        public Tile(int side1, int side2) {
-            this.side1 = side1;
-            this.side2 = side2;
-        }
-
-        public int getSide1() { return side1; }
-        public void setSide1(int side1) { this.side1 = side1; }
-        public int getSide2() { return side2; }
-        public void setSide2(int side2) { this.side2 = side2; }
-
-        public int getA() { return side1; }
-        public int getB() { return side2; }
+    @GetMapping("/test")
+    public String test() {
+        return "Test endpoint working";
     }
 
     @PostMapping("/predict")
-    public String predictMove(@RequestBody GameState gameState) {
-        // Update game state
-        board.clear();
-        for (Tile t : gameState.getBoard()) {
-            board.add(new Tile(t.getSide1(), t.getSide2()));
-        }
-        player = new Player();
-        for (Tile t : gameState.getHand()) {
-            player.add(new Tile(t.getSide1(), t.getSide2()));
-        }
-        leftEnd = gameState.getLeftEnd();
-        rightEnd = gameState.getRightEnd();
+    public ResponseEntity<String> predict(@RequestBody GameState gameState) {
+        try {
+            if (qNetwork == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Model not loaded");
+            }
 
-        return getQNetworkSuggestion(player, board, leftEnd, rightEnd);
+            Player p = new Player();
+            for(int i = 0; i < gameState.hand.size(); i++){
+                p.add(gameState.hand.get(i));
+            }
+            
+            return ResponseEntity.ok(getQNetworkSuggestion(p, gameState.board, gameState.leftEnd, gameState.rightEnd));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error processing request: " + e.getMessage());
+        }
     }
 
     private static String getQNetworkSuggestion(Player player, ArrayList<Tile> board, int leftEnd, int rightEnd) {
@@ -97,7 +87,7 @@ public class Solver {
         }
 
         double[] state = new double[490];
-        player.getState(board, leftEnd, rightEnd, state);
+        player.getState(board, leftEnd, rightEnd, state); // Now compatible
         INDArray input = Nd4j.createFromArray(new double[][]{state});
         INDArray qValues = qNetwork.output(input);
 
@@ -116,7 +106,7 @@ public class Solver {
             return String.format("Pass (Q: %.3f)", bestQValue);
         } else {
             int tileIdx = bestAction % 28;
-            Tile tile = Game.allTiles.get(tileIdx);
+            Tile tile = Game.allTiles.get(tileIdx); // Now both are src.Tile
             String side = (bestAction < 28) ? "Left" : "Right";
             return String.format("%s on %s (Q: %.3f)", tile.toString(), side, bestQValue);
         }

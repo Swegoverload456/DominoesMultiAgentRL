@@ -28,8 +28,11 @@ public class Game {
         .updater(new Adam(0.001))
         .list()
         .layer(0, new DenseLayer.Builder().nIn(490).nOut(256).activation(Activation.RELU).build())
-        .layer(1, new DenseLayer.Builder().nIn(256).nOut(128).activation(Activation.RELU).build())
-        .layer(2, new OutputLayer.Builder().nIn(128).nOut(57).activation(Activation.IDENTITY)
+        .layer(1, new DenseLayer.Builder().nIn(256).nOut(256).activation(Activation.RELU).build())
+        .layer(2, new DenseLayer.Builder().nIn(256).nOut(256).activation(Activation.RELU).build())
+        .layer(3, new DenseLayer.Builder().nIn(256).nOut(256).activation(Activation.RELU).build())
+        .layer(4, new DenseLayer.Builder().nIn(256).nOut(128).activation(Activation.RELU).build())
+        .layer(5, new OutputLayer.Builder().nIn(128).nOut(57).activation(Activation.IDENTITY)
             .lossFunction(LossFunctions.LossFunction.MSE).build())
         .build();
 
@@ -56,7 +59,7 @@ public class Game {
     public static int leftEnd = -1, rightEnd = -1;
 
     public static void trainAgents(int episodes) throws IOException {
-        ArrayDeque<double[]> replayBuffer = new ArrayDeque<>(5000);
+        ArrayDeque<double[]> replayBuffer = new ArrayDeque<>(60000);
         Random rand = new Random();
         double epsilon = 1.0, epsilonMin = 0.01, epsilonDecay = 0.999; // Slower decay
         int batchSize = 32, targetUpdateFreq = 100;
@@ -76,7 +79,7 @@ public class Game {
 
         for (int ep = 0; ep < episodes; ep++) {
             if (ep % (percentageInterval / 10) == 0) {
-                System.out.printf("%.1f%% done.\n", (ep * 100.0) / episodes);
+                System.out.printf("\r%.1f%% done", (ep * 100.0) / episodes);
             }
 
             set.clear();
@@ -188,7 +191,7 @@ public class Game {
         }
 
         System.out.println("Training complete. Saving model...");
-        qNetwork.save(new File("dominoes_qnetworkSelfPlay.zip"));
+        qNetwork.save(new File("dominoes_qnetworkSelfPlay2.zip"));
     }
     
     private static double[] createExperience(double[] state, int action, double reward, double[] nextState, double done) {
